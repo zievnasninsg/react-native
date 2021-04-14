@@ -6,10 +6,10 @@
 package com.facebook.react.uimanager;
 
 import android.content.Context;
-import android.support.v4.view.AccessibilityDelegateCompat;
-import android.support.v4.view.ViewCompat;
-import android.support.v4.view.accessibility.AccessibilityNodeInfoCompat;
-import android.support.v4.view.accessibility.AccessibilityNodeInfoCompat.CollectionItemInfoCompat;
+import androidx.core.view.AccessibilityDelegateCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat.CollectionItemInfoCompat;
 import android.text.SpannableString;
 import android.text.style.URLSpan;
 import android.view.View;
@@ -30,7 +30,7 @@ public class AccessibilityDelegateUtil {
    *
    * <p>https://github.com/google/talkback/blob/master/utils/src/main/java/Role.java
    */
-
+   
   public enum AccessibilityRole {
     NONE,
     BUTTON,
@@ -41,6 +41,7 @@ public class AccessibilityDelegateUtil {
     KEYBOARDKEY,
     TEXT,
     ADJUSTABLE,
+    CHECKBOX,
     SUMMARY,
     HEADER;
 
@@ -68,6 +69,8 @@ public class AccessibilityDelegateUtil {
           return "android.widget.ViewGroup";
         case HEADER:
           return "android.widget.ViewGroup";
+        case CHECKBOX:
+          return "android.widget.CheckBox";
         default:
           throw new IllegalArgumentException("Invalid accessibility role value: " + role);
       }
@@ -112,8 +115,36 @@ public class AccessibilityDelegateUtil {
             }
 
             setRole(info, accessibilityRole, view.getContext());
+
+            // state is changeable.
+            final ReadableMap accessibilityState = (ReadableMap) host.getTag(R.id.accessibility_state);
+            if (accessibilityState != null) {
+              setState(info, accessibilityState, host.getContext());
+            }
           }
         });
+    }
+  }
+
+  private static final String STATE_DISABLED = "disabled";
+  private static final String STATE_SELECTED = "selected";
+  private static final String STATE_CHECKED = "checked";
+
+  private static void setState(
+      AccessibilityNodeInfoCompat info, ReadableMap accessibilityState, Context context) {
+    final ReadableMapKeySetIterator i = accessibilityState.keySetIterator();
+    while (i.hasNextKey()) {
+      final String state = i.nextKey();
+      final Dynamic value = accessibilityState.getDynamic(state);
+      if (state.equals(STATE_SELECTED) && value.getType() == ReadableType.Boolean) {
+        info.setSelected(value.asBoolean());
+      } else if (state.equals(STATE_DISABLED) && value.getType() == ReadableType.Boolean) {
+        info.setEnabled(!value.asBoolean());
+      } else if (state.equals(STATE_CHECKED) && value.getType() == ReadableType.Boolean) {
+        final boolean boolValue = value.asBoolean();
+        info.setCheckable(true);
+        info.setChecked(boolValue);
+      }
     }
   }
 
